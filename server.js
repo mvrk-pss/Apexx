@@ -79,8 +79,7 @@ wss.on('connection', (ws, req) => {
             try {
                 const json = JSON.parse(msg);
 
-                // Application-level pong for proxies that strip WS frames
-                if (json.type === 'pong') {
+                if (json.type === 'pong' || json.type === 'heartbeat') {
                     ws.isAlive = true;
                     continue;
                 }
