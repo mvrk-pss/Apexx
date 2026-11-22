@@ -1,0 +1,165 @@
+:root {
+    --g1:#00ff88;--g2:#00dd77;--g3:#00bb66;--g4:#009955;--g5:#006633;
+    --bg:#050608;--bg2:#0a0c10;--bg3:#0e1116;--card:#0d1117;--card2:#131920;
+    --border:rgba(0,255,136,.08);--border-h:rgba(0,255,136,.18);
+    --t1:#e8ede9;--t2:#8b9b8e;--t3:#4a5a4e;
+    --danger:#ff3b4f;--warn:#ffb020;
+    --radius:12px;--radius-sm:8px;
+    --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;--display:'Orbitron',sans-serif;
+
+    /* Legacy variable mappings for pages that still use old names */
+    --bg-dark: var(--bg);
+    --card-bg: var(--card);
+    --text-main: var(--t1);
+    --text-dim: var(--t2);
+    --primary: var(--g1);
+    --primary-dim: var(--g5);
+    --console-bg: #000000;
+    --accent: var(--bg3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--sans);
+    background-color: var(--bg);
+    color: var(--t1);
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(0,255,136,.2); color: #fff }
+::-webkit-scrollbar { width: 5px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: rgba(0,255,136,.15); border-radius: 3px }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,255,136,.25) }
+
+header {
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg2);
+}
+
+header h1 {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--g1);
+    text-shadow: 0 0 20px rgba(0,255,136,.25);
+}
+
+a { color: var(--g2); text-decoration: none; }
+a:hover { color: var(--g1); text-decoration: underline; }
+
+.card, .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.card:hover, .panel:hover { border-color: var(--border-h) }
+
+h2, h3 {
+    font-family: var(--display);
+    letter-spacing: 1px;
+    color: var(--g1);
+}
+
+input, textarea, select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--t1);
+    padding: 8px 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+}
+input:focus, textarea:focus, select:focus {
+    border-color: var(--g4);
+    box-shadow: 0 0 10px rgba(0,255,136,.08);
+}
+
+button, .btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--t2);
+    transition: all .2s;
+    font-family: var(--sans);
+}
+button:hover, .btn:hover {
+    border-color: rgba(0,255,136,.2);
+    color: var(--g2);
+    background: rgba(0,255,136,.03);
+}
+
+.btn-primary {
+    background: var(--g4);
+    color: #000;
+    border-color: var(--g3);
+}
+.btn-primary:hover {
+    background: var(--g3);
+    box-shadow: 0 0 20px rgba(0,255,136,.25);
+}
+
+.console, pre, code {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--g2);
+    overflow: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--t3);
+    border-bottom: 1px solid var(--border);
+}
+td {
+    padding: 8px 12px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(0,255,136,.03);
+    color: var(--t2);
+}
+tr:hover td { background: rgba(0,255,136,.01) }
+
+.badge, .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(0,255,136,.06);
+    color: var(--g1);
+    border: 1px solid rgba(0,255,136,.12);
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PSS — Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--g1:#00ff88;--g-glow:rgba(0,255,136,0.3);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;background:#050608;color:#e8ede9;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;overflow:hidden;user-select:none;}
+  .page-center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;}
+  .page-title{font-family:'Orbitron',sans-serif;font-size:24px;font-weight:900;letter-spacing:8px;color:var(--g1);text-shadow:0 0 20px var(--g1),0 0 50px var(--g-glow);animation:pulse 2.5s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{text-shadow:0 0 20px var(--g1),0 0 50px var(--g-glow)}50%{text-shadow:0 0 30px var(--g1),0 0 80px rgba(0,255,136,0.5)}}
+  .page-sub{font-size:10px;color:rgba(0,180,100,0.5);letter-spacing:4px;}
+  .page-line{width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--g1),transparent);animation:ls 2s ease-in-out infinite;}
+  @keyframes ls{0%,100%{opacity:0.3}50%{opacity:1}}
+  .blink-cursor::after{content:'_';animation:blink 1s step-end infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .status-text{font-size:9px;color:rgba(0,120,70,0.6);letter-spacing:2px;}
+</style>
+</head>
+<body>
+<div class="page-center">
+  <div class="page-line"></div>
+  <div class="page-title">SETTINGS</div>
+  <div class="page-sub blink-cursor">// Module under construction</div>
+  <div class="status-text">[ PSS // BACKEND INTEGRATION PENDING ]</div>
+  <div class="page-line"></div>
+</div>
+</body>
+</html>
