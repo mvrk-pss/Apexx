@@ -16,15 +16,18 @@ const wss = new WebSocket.Server({ noServer: true });
 
 // Handle HTTP upgrade — route /rat to RAT WebSocket, let socket.io handle its own
 server.on('upgrade', (request, socket, head) => {
-    const url = new URL(request.url, `http://${request.headers.host}`);
-    if (url.pathname === '/rat') {
+    const pathname = request.url.split('?')[0];
+    if (pathname === '/rat') {
         wss.handleUpgrade(request, socket, head, (ws) => {
             wss.emit('connection', ws, request);
         });
-    } else {
-        // Let socket.io handle its own upgrades (it hooks into the server internally)
-        // Do nothing here — socket.io already registered its own upgrade handler
     }
+    // socket.io handles its own /socket.io/ upgrades internally
+});
+
+// Fallback: if someone hits /rat via plain HTTP
+app.get('/rat', (req, res) => {
+    res.status(426).send('WebSocket upgrade required');
 });
 
 function sysLog(msg, type = 'info') {
